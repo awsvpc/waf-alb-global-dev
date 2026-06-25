@@ -221,7 +221,7 @@ echo "</pre>";
 ```
 
 This displays all request headers, CGI variables, and Apache environment information.
-###########
+---
 
 # WAF SQL Injection Test Application
 
@@ -245,7 +245,7 @@ if (isset($_GET['id'])) {
 ?>
 EOF
 ```
-
+---
 ## Install test.php
 
 Create the file:
@@ -302,7 +302,74 @@ echo "Host: " . $_SERVER['HTTP_HOST'] . "\n";
 ?>
 EOF
 ```
+---
+## Install test.php with Forwarded For Headers
 
+```bash
+sudo tee /var/www/html/test.php > /dev/null <<'EOF'
+<?php
+
+header('Content-Type: text/plain');
+
+echo "==== REQUEST INFORMATION ====\n\n";
+
+echo "Method: " . $_SERVER['REQUEST_METHOD'] . "\n";
+echo "URI: " . $_SERVER['REQUEST_URI'] . "\n";
+echo "Remote Address: " . $_SERVER['REMOTE_ADDR'] . "\n\n";
+
+
+echo "==== FORWARDED HEADERS ====\n\n";
+
+$forwarded_headers = [
+    'HTTP_X_FORWARDED_FOR',
+    'HTTP_X_FORWARDED_PROTO',
+    'HTTP_X_FORWARDED_PORT',
+    'HTTP_X_FORWARDED_HOST',
+    'HTTP_X_REAL_IP'
+];
+
+foreach ($forwarded_headers as $header) {
+
+    if (isset($_SERVER[$header])) {
+        echo $header . ": " . $_SERVER[$header] . "\n";
+    } else {
+        echo $header . ": not set\n";
+    }
+
+}
+
+
+echo "\n==== ALL REQUEST HEADERS ====\n\n";
+
+foreach (getallheaders() as $name => $value) {
+    echo "$name: $value\n";
+}
+
+
+echo "\n==== QUERY PARAMETERS ====\n\n";
+
+if (!empty($_GET)) {
+
+    foreach ($_GET as $key => $value) {
+        echo "$key = $value\n";
+    }
+
+} else {
+
+    echo "No query parameters\n";
+
+}
+
+
+echo "\n==== SERVER VARIABLES ====\n\n";
+
+echo "User Agent: " . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "\n";
+echo "Host: " . ($_SERVER['HTTP_HOST'] ?? '') . "\n";
+
+?>
+EOF
+
+```
 ---
 
 # Test Normal Request
