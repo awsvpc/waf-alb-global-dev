@@ -1,5 +1,3 @@
-Here's a README.md you can use for the header-viewer application.
-
 # Request Header Viewer on Amazon Linux
 
 This guide installs Apache and PHP on an Amazon Linux EC2 instance and creates a simple web page that displays incoming HTTP request headers.
