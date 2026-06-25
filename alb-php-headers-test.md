@@ -68,12 +68,12 @@ http://54.123.45.67/headers.php
 Optional: Display all request/server variables
 
 Replace the contents of headers.php with:
-
+```
 <?php
 echo "<pre>";
 print_r($_SERVER);
 echo "</pre>";
 ?>
-
+```
 This shows all headers plus CGI and Apache environment variables.
 </pre>
