@@ -221,3 +221,228 @@ echo "</pre>";
 ```
 
 This displays all request headers, CGI variables, and Apache environment information.
+###########
+
+# WAF SQL Injection Test Application
+
+This simple PHP application is used to test WAF rules by displaying incoming HTTP requests and parameters.
+
+## Install test1.php without header
+
+Create the file
+```bash
+sudo tee /var/www/html/test.php > /dev/null <<'EOF'
+<?php
+header('Content-Type: text/plain');
+
+echo "Received input:\n";
+
+if (isset($_GET['id'])) {
+    echo $_GET['id'];
+} else {
+    echo "no id parameter";
+}
+?>
+EOF
+```
+
+## Install test.php
+
+Create the file:
+
+```bash
+sudo tee /var/www/html/test.php > /dev/null <<'EOF'
+<?php
+
+header('Content-Type: text/plain');
+
+echo "==== REQUEST INFORMATION ====\n\n";
+
+echo "Method: " . $_SERVER['REQUEST_METHOD'] . "\n";
+echo "URI: " . $_SERVER['REQUEST_URI'] . "\n";
+echo "Remote IP: " . $_SERVER['REMOTE_ADDR'] . "\n\n";
+
+
+echo "==== REQUEST HEADERS ====\n\n";
+
+$headers = getallheaders();
+
+foreach ($headers as $name => $value) {
+    echo "$name: $value\n";
+}
+
+
+echo "\n==== QUERY PARAMETERS ====\n\n";
+
+if (!empty($_GET)) {
+    foreach ($_GET as $key => $value) {
+        echo "$key = $value\n";
+    }
+} else {
+    echo "No query parameters\n";
+}
+
+
+echo "\n==== POST PARAMETERS ====\n\n";
+
+if (!empty($_POST)) {
+    foreach ($_POST as $key => $value) {
+        echo "$key = $value\n";
+    }
+} else {
+    echo "No POST parameters\n";
+}
+
+
+echo "\n==== SERVER VARIABLES ====\n\n";
+
+echo "User Agent: " . $_SERVER['HTTP_USER_AGENT'] . "\n";
+echo "Host: " . $_SERVER['HTTP_HOST'] . "\n";
+
+?>
+EOF
+```
+
+---
+
+# Test Normal Request
+
+```bash
+curl "http://<EC2-IP>/test.php?id=123"
+```
+
+Example output:
+
+```text
+==== REQUEST INFORMATION ====
+
+Method: GET
+URI: /test.php?id=123
+Remote IP: 1.2.3.4
+
+
+==== QUERY PARAMETERS ====
+
+id = 123
+```
+
+---
+
+# Test SQL Injection Patterns
+
+## Basic SQL Injection
+
+```bash
+curl "http://<EC2-IP>/test.php?id=1%27%20OR%20%271%27=%271"
+```
+
+Decoded:
+
+```sql
+1' OR '1'='1
+```
+
+---
+
+## UNION SQL Injection
+
+```bash
+curl "http://<EC2-IP>/test.php?id=1%20UNION%20SELECT%201,2,3"
+```
+
+---
+
+## Comment Injection
+
+```bash
+curl "http://<EC2-IP>/test.php?id=1%27--"
+```
+
+---
+
+# Test With Custom Headers
+
+```bash
+curl \
+-H "User-Agent: waf-test" \
+-H "X-Test: sql-injection-check" \
+"http://<EC2-IP>/test.php?id=1%27%20OR%201=1"
+```
+
+The application should display:
+
+```text
+User-Agent: waf-test
+X-Test: sql-injection-check
+```
+
+---
+
+# AWS WAF Testing
+
+For AWS WAF:
+
+1. Put this EC2 instance behind:
+
+   * Application Load Balancer
+   * CloudFront
+   * API Gateway
+
+2. Add AWS Managed Rule:
+
+```
+AWSManagedRulesSQLiRuleSet
+```
+
+3. Start with:
+
+```
+Action: Count
+```
+
+4. Review:
+
+```
+AWS WAF -> Web ACL -> Sampled Requests
+```
+
+5. Change to:
+
+```
+Action: Block
+```
+
+---
+
+# Verify Apache Logs
+
+Watch requests:
+
+```bash
+sudo tail -f /var/log/httpd/access_log
+```
+
+Errors:
+
+```bash
+sudo tail -f /var/log/httpd/error_log
+```
+
+---
+
+# Verify Application
+
+Open:
+
+```
+http://<EC2-PUBLIC-IP>/test.php
+```
+
+or:
+
+```
+http://<EC2-PUBLIC-IP>/test.php?id=test
+```
+
+This page can be used as a lightweight WAF inspection endpoint.
+
